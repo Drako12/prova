@@ -19,7 +19,7 @@
 #define BUFSIZE BUFSIZ
 #define HTTP_PORT "50000"
 #define IP_ADDR "54.94.159.157" 
-#define PACKETSIZE 8
+#define PACKETSIZE 6
 
 typedef enum packet_type_
 {
@@ -29,10 +29,25 @@ typedef enum packet_type_
 
 }packet_type; 
 
+typedef enum decode_table_
+{
+  
+}
+struct packet
+{
+  unsigned int p1;
+  unsigned int p1;
+  unsigned int p1;
+  unsigned int p1;
+  unsigned int p1;
+  unsigned int p1;
+}
 typedef struct server_message_
 {
   char packet[PACKETSIZE];
+  char byte[1];
   char buffer[BUFSIZE];
+  char decode_buf[BUFSIZE];
   int bytes_read;
   int sockfd;
 }server_message;
