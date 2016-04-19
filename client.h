@@ -33,18 +33,22 @@ typedef enum decode_table_
 {
   
 }
-struct packet
+struct
 {
-  unsigned int p1;
-  unsigned int p1;
-  unsigned int p1;
-  unsigned int p1;
-  unsigned int p1;
-  unsigned int p1;
-}
+  unsigned int b1: 5;
+  unsigned int b2: 5;
+  unsigned int b3: 5;
+  unsigned int b4: 5;
+  unsigned int b5: 5;
+  unsigned int b6: 5;
+  unsigned int b7: 5;
+  unsigned int b8: 5;
+}packet;
+
 typedef struct server_message_
 {
   char packet[PACKETSIZE];
+  struct packet *p;
   char byte[1];
   char buffer[BUFSIZE];
   char decode_buf[BUFSIZE];
