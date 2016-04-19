@@ -79,7 +79,7 @@ static int get_server_message(server_message *message)
 {
   int nread = 0;
 
-  while (strchr(message->packet, "\x21") == NULL)
+  while (strchr(message->packet, (int) END_TRANS) == NULL)
   {
     if ((nread = recv(message->sockfd, message->buffer + message->bytes_read, PACKETSIZE, 0)) <= 0)
       return -1;

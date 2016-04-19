@@ -24,8 +24,8 @@
 typedef enum packet_type_
 {
   START = 0xC6,
-  END = 0x6B,
-  TRANS = 0x21
+  END_PACKET = 0x6B,
+  END_TRANS = 0x21
 
 }packet_type; 
 
