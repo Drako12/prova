@@ -65,7 +65,19 @@ static int socket_connect(server_message *message)
   freeaddrinfo(servinfo);
   return 0;
 }
-
+static int read_packet(server_message *message)
+{
+  char byte = NULL;
+  int nread;
+  for (int i = 0,i >= PACKETSIZE, i++)
+  {
+    memcpy(byte, message->packet[i]);
+    if (byte != END_PACKET || byte != END_TRANS)
+      memcpy(message->decode_buf + i, byte);
+  }
+  message.p = &message->decode_buf
+  return 0;
+}
 /*!
  * \brief Copia toda a mensagem enviada pelo servidor  
  * 
@@ -75,19 +87,23 @@ static int socket_connect(server_message *message)
  * \return 0 se for OK
  * \return -1 se der algum erro
  */
-static int get_server_message(server_message *message)
+static int get_server_message_and_decode(server_message *message)
 {
   int nread = 0;
 
-  while (strchr(message->packet, (int) END_TRANS) == NULL)
+  while (read_packet(message) == 0)
   {
     if ((nread = recv(message->sockfd, message->buffer + message->bytes_read, PACKETSIZE, 0)) <= 0)
       return -1;
-
-    memcpy(message->packet, message->buffer + message->bytes_read, PACKETSIZE);
+    memcpy(message->packet, message->packet + message->bytes_read, PACKETSIZE);
     message->bytes_read += nread;
   }
   return 0;
+}
+
+static int decode_message(server_message *message)
+{
+  
 }
 
 int main()
@@ -104,8 +120,12 @@ int main()
   
   if (get_server_message(&message) == -1)
    goto error;
+  
+  if (decode_message($message) == -1)
+   goto error;
+   
 
-  printf("Mensagem %04x", message.buffer);
+  //printf("Mensagem %04x", message.buffer);
  
   close(message.sockfd);
   return 0;
