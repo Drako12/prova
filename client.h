@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <fcntl.h>
-
+#include <byteswap.h>
 #define BUFSIZE BUFSIZ
 #define HTTP_PORT "50000"
 #define IP_ADDR "54.94.159.157" 
@@ -29,32 +29,46 @@ typedef enum packet_type_
 
 }packet_type; 
 
-typedef struct packed
-{
-  unsigned char b1: 5;
-  unsigned char b2: 5;
-  unsigned char b3: 5;
-  unsigned char b4: 5;
-  unsigned char b5: 5;
-  unsigned char b6: 5;
-  unsigned char b7: 5;
-  unsigned char b8: 5;
+typedef struct __attribute__((packed)) packed {
+  unsigned int b8: 5;
+  unsigned int b7: 5;
+  unsigned int b6: 5;
+  unsigned int b5: 5;
+  unsigned int b4: 5;
+  unsigned int b3: 5;
+  unsigned int b2: 5;
+  unsigned int b1: 5;
 }packed;
 
-typedef union all
+typedef union unpacked_
 {
-  packed fields;
-  long int all_values;
-}all;
+  struct __attribute__((packed)) upack_nibble
+  {
+  unsigned int u1: 4;
+  unsigned int u2: 4;
+  unsigned int u3: 4;
+  unsigned int u4: 4;
+  unsigned int u5: 4;
+  unsigned int u6: 4;
+  unsigned int u7: 4;
+  unsigned int u8: 4; 
+  }unpack_n;
+  
+  struct __attribute__((packed)) upack_byte 
+  {
+    unsigned int byte1: 8;
+    unsigned int byte2: 8;
+    unsigned int byte3: 8;
+    unsigned int byte4: 8;
+  }unpack_b;
+}unpacked;
 
 typedef struct server_message_
 {
-  char packet[PACKETSIZE];
+  packed *en_pack;
   char encoded_packet[PACKETSIZE - 2];
-  all  u_pack;
   char buffer[BUFSIZE];
   char decode_buf[BUFSIZE];
-  int bytes_read;
   int sockfd;
 }server_message;
 

@@ -65,14 +65,52 @@ static int socket_connect(server_message *message)
   freeaddrinfo(servinfo);
   return 0;
 }
+
+/*
+ * A tabela de decoficacao foi feita da seguinte maneira, o indice do 
+ * vetor e' o valor em decimal do nibble de entrada(decodificado), e 
+ * o valor do indice e' o nibble de saida (codificado). 
+ * Por exemplo: A ultima entrada da tabela e' o 15 (1111) e o valor
+ * correspondente a ele e' o 11101 (29). No indice 29 se encontra
+ * o valor 15.
+ *
+ */
+static int decode_table(int bits)
+{  
+  int decode[31] = {0,0,0,0,0,0,0,0,0,1,4,5,0,0,6,7,0,0,8,9,2,3,10,11,0,0,12,13,14,15,0};
+  return decode[bits]; 
+}
+
+static int decode_values(packed *pack)
+{
+  unpacked p;
+  p.unpack_n.u1= decode_table(pack->b2);
+  p.unpack_n.u2= decode_table(pack->b1);
+  p.unpack_n.u3= decode_table(pack->b4);
+  p.unpack_n.u4= decode_table(pack->b3);
+  p.unpack_n.u5= decode_table(pack->b6);
+  p.unpack_n.u6= decode_table(pack->b5);
+  p.unpack_n.u7= decode_table(pack->b8);
+  p.unpack_n.u8= decode_table(pack->b7);  
+}
 static int read_packet(server_message *message)
 {
-   usigned char teste ={0xC6, 0x57, 0x54, 0x95, 0x5E, 0x9E, 0x6B};
+   int i;
+   unsigned char tmp;
+   unsigned char teste[7]={0xC6, 0x57, 0x54, 0x95, 0x5E, 0x9E, 0x6B};
+   unsigned char teste2=0x57;
    memcpy(message->encoded_packet, teste + 1, PACKETSIZE - 2); 
-   message->u_pack.all_values = &message->encoded_packet;
+   for (i=0;i<2;i++)
+   {
+     tmp=message->encoded_packet[i];
+     message->encoded_packet[i] = message->encoded_packet[4 - i];
+     message->encoded_packet[4 - i] = tmp;
+   }
+   message->en_pack = &message->encoded_packet;
+  decode_values(message->en_pack);
   //for (i = 0;i < 5; i++)
-  //  message->u_pack.all_values =  &message->encoded_packet[i];
-
+  //  message->u_pack[i].all_values = message->encoded_packet[i];
+  //packed *p = (packed *) message->encoded_packet;
      
 
 // memcpy(message->encoded_packet, message->packet + 1, PACKETSIZE - 2); 
