@@ -31,14 +31,14 @@ typedef enum packet_type_
 
 typedef struct packed
 {
-  unsigned int b1: 5;
-  unsigned int b2: 5;
-  unsigned int b3: 5;
-  unsigned int b4: 5;
-  unsigned int b5: 5;
-  unsigned int b6: 5;
-  unsigned int b7: 5;
-  unsigned int b8: 5;
+  unsigned char b1: 5;
+  unsigned char b2: 5;
+  unsigned char b3: 5;
+  unsigned char b4: 5;
+  unsigned char b5: 5;
+  unsigned char b6: 5;
+  unsigned char b7: 5;
+  unsigned char b8: 5;
 }packed;
 
 typedef union all
