@@ -41,10 +41,17 @@ typedef struct packed
   unsigned int b8: 5;
 }packed;
 
+typedef union all
+{
+  packed fields;
+  long int all_values;
+}all;
+
 typedef struct server_message_
 {
   char packet[PACKETSIZE];
   char encoded_packet[PACKETSIZE - 2];
+  all  u_pack;
   char buffer[BUFSIZE];
   char decode_buf[BUFSIZE];
   int bytes_read;

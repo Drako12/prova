@@ -66,11 +66,16 @@ static int socket_connect(server_message *message)
   return 0;
 }
 static int read_packet(server_message *message)
-{ 
-  //for (int i = 1;i <= PACKETSIZE; i++)
-  //  if (message->packet[i] != END_PACKET || message->packet[i] != END_TRANS)
-  memcpy(message->encoded_packet, message->packet + 1, PACKETSIZE - 2); 
-   packed *p = (packed * ) &message->encoded_packet;    
+{
+   memcpy(message->encoded_packet, message->packet + 1, PACKETSIZE - 2); 
+   message->u_pack.all_values = &message->encoded_packet;
+  //for (i = 0;i < 5; i++)
+  //  message->u_pack.all_values =  &message->encoded_packet[i];
+
+     
+
+// memcpy(message->encoded_packet, message->packet + 1, PACKETSIZE - 2); 
+    // packed *p = (packed * ) message->encoded_packet;    
   return 0;
 }
 /*!
@@ -86,13 +91,13 @@ static int get_server_message_and_decode(server_message *message)
 {
   int nread = 0;
 
-  while (read_packet(message) == 0)
+  do
   {
     if ((nread = recv(message->sockfd, message->buffer + message->bytes_read, PACKETSIZE, 0)) <= 0)
       return -1;
     memcpy(message->packet, message->buffer + message->bytes_read, PACKETSIZE);
     message->bytes_read += nread;
-  }
+  } while (read_packet(message) == 0);
   return 0;
 }
 
