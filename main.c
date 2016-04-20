@@ -67,7 +67,8 @@ static int socket_connect(server_message *message)
 }
 static int read_packet(server_message *message)
 {
-   memcpy(message->encoded_packet, message->packet + 1, PACKETSIZE - 2); 
+   usigned char teste ={0xC6, 0x57, 0x54, 0x95, 0x5E, 0x9E, 0x6B};
+   memcpy(message->encoded_packet, teste + 1, PACKETSIZE - 2); 
    message->u_pack.all_values = &message->encoded_packet;
   //for (i = 0;i < 5; i++)
   //  message->u_pack.all_values =  &message->encoded_packet[i];
@@ -89,15 +90,15 @@ static int read_packet(server_message *message)
  */
 static int get_server_message_and_decode(server_message *message)
 {
-  int nread = 0;
-
-  do
+  //int nread = 0;
+  read_packet(message);
+  /*do
   {
     if ((nread = recv(message->sockfd, message->buffer + message->bytes_read, PACKETSIZE, 0)) <= 0)
       return -1;
     memcpy(message->packet, message->buffer + message->bytes_read, PACKETSIZE);
     message->bytes_read += nread;
-  } while (read_packet(message) == 0);
+  } while (read_packet(message) == 0);*/
   return 0;
 }
 
@@ -108,11 +109,11 @@ int main()
     
   memset(&message, 0, sizeof(message));
 
-  if (socket_connect(&message) < 0)
-    goto error;
+  //if (socket_connect(&message) < 0)
+//    goto error;
 
-  if (set_nonblock(message.sockfd) < 0)
-    goto error;
+  //if (set_nonblock(message.sockfd) < 0)
+    //goto error;
   
   if (get_server_message_and_decode(&message) == -1)
    goto error;
