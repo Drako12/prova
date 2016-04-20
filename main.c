@@ -66,16 +66,11 @@ static int socket_connect(server_message *message)
   return 0;
 }
 static int read_packet(server_message *message)
-{
-  char byte = NULL;
-  int nread;
-  for (int i = 0,i >= PACKETSIZE, i++)
-  {
-    memcpy(byte, message->packet[i]);
-    if (byte != END_PACKET || byte != END_TRANS)
-      memcpy(message->decode_buf + i, byte);
-  }
-  message.p = &message->decode_buf
+{ 
+  //for (int i = 1;i <= PACKETSIZE; i++)
+  //  if (message->packet[i] != END_PACKET || message->packet[i] != END_TRANS)
+  memcpy(message->encoded_packet, message->packet + 1, PACKETSIZE - 2); 
+   packed *p = (packed * ) &message->encoded_packet;    
   return 0;
 }
 /*!
@@ -95,16 +90,12 @@ static int get_server_message_and_decode(server_message *message)
   {
     if ((nread = recv(message->sockfd, message->buffer + message->bytes_read, PACKETSIZE, 0)) <= 0)
       return -1;
-    memcpy(message->packet, message->packet + message->bytes_read, PACKETSIZE);
+    memcpy(message->packet, message->buffer + message->bytes_read, PACKETSIZE);
     message->bytes_read += nread;
   }
   return 0;
 }
 
-static int decode_message(server_message *message)
-{
-  
-}
 
 int main()
 {  
@@ -118,11 +109,11 @@ int main()
   if (set_nonblock(message.sockfd) < 0)
     goto error;
   
-  if (get_server_message(&message) == -1)
+  if (get_server_message_and_decode(&message) == -1)
    goto error;
   
-  if (decode_message($message) == -1)
-   goto error;
+  //if (decode_message($message) == -1)
+  // goto error;
    
 
   //printf("Mensagem %04x", message.buffer);
