@@ -15,10 +15,13 @@
 #include <unistd.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <ctype.h>
 #define BUFSIZE BUFSIZ
 #define HTTP_PORT "50000"
 #define IP_ADDR "54.94.159.157" 
 #define PACKETSIZE 7
+#define HIGH_NIBBLE 240
+#define LOW_NIBBLE 15
 
 typedef enum packet_type_
 {
@@ -39,6 +42,14 @@ typedef struct __attribute__((packed)) encoded_
   unsigned int b2: 5;
   unsigned int b1: 5;
 }encoded;
+
+typedef struct __attribute__((packed)) encoded_bytes_ 
+{
+  unsigned int byte1: 8;
+  unsigned int byte2: 8;
+  unsigned int byte3: 8;
+  unsigned int byte4: 8;
+}encoded_bytes;
 
 typedef union decoded_
 {
@@ -67,9 +78,11 @@ typedef struct packets_
 {
   encoded *en_pack;
   decoded de_pack;
+  encoded_bytes *en_bytes;
   unsigned char encoded_packet[PACKETSIZE - 2];
   char full_packet[PACKETSIZE];
-  unsigned char decoded_packet[PACKETSIZE - 2];
+  char full_en_packet[PACKETSIZE];
+  unsigned char decoded_packet[PACKETSIZE - 3];
   struct packets_ *next;
 }packet;
 
@@ -77,6 +90,7 @@ typedef struct packet_list_
 {
   int list_len;
   char *message;
+  char *en_message;
   packet *head;
 }packet_list; 
 
