@@ -15,7 +15,6 @@
 #include <unistd.h>
 #include <limits.h>
 #include <fcntl.h>
-#include <byteswap.h>
 #define BUFSIZE BUFSIZ
 #define HTTP_PORT "50000"
 #define IP_ADDR "54.94.159.157" 
@@ -29,7 +28,8 @@ typedef enum packet_type_
 
 }packet_type; 
 
-typedef struct __attribute__((packed)) packed {
+typedef struct __attribute__((packed)) encoded_
+{
   unsigned int b8: 5;
   unsigned int b7: 5;
   unsigned int b6: 5;
@@ -38,39 +38,47 @@ typedef struct __attribute__((packed)) packed {
   unsigned int b3: 5;
   unsigned int b2: 5;
   unsigned int b1: 5;
-}packed;
+}encoded;
 
-typedef union unpacked_
+typedef union decoded_
 {
-  struct __attribute__((packed)) upack_nibble
+  struct __attribute__((packed)) de_nibble_
   {
-  unsigned int u1: 4;
-  unsigned int u2: 4;
-  unsigned int u3: 4;
-  unsigned int u4: 4;
-  unsigned int u5: 4;
-  unsigned int u6: 4;
-  unsigned int u7: 4;
-  unsigned int u8: 4; 
-  }unpack_n;
+  unsigned int n1: 4;
+  unsigned int n2: 4;
+  unsigned int n3: 4;
+  unsigned int n4: 4;
+  unsigned int n5: 4;
+  unsigned int n6: 4;
+  unsigned int n7: 4;
+  unsigned int n8: 4; 
+  }de_nibble;
   
-  struct __attribute__((packed)) upack_byte 
+  struct __attribute__((packed)) message_ 
   {
     unsigned int byte1: 8;
     unsigned int byte2: 8;
     unsigned int byte3: 8;
     unsigned int byte4: 8;
-  }unpack_b;
-}unpacked;
+  }message;
+}decoded;
 
-typedef struct server_message_
+typedef struct packets_
 {
-  packed *en_pack;
-  char encoded_packet[PACKETSIZE - 2];
-  char buffer[BUFSIZE];
-  char decode_buf[BUFSIZE];
-  int sockfd;
-}server_message;
+  encoded *en_pack;
+  decoded *de_pack;
+  unsigned char encoded_packet[PACKETSIZE - 2];
+  char full_packet[PACKETSIZE];
+  unsigned char decoded_packet[PACKETSIZE - 2];
+  struct packets_ *next;
+}packet;
+
+typedef struct packet_list_
+{
+  int list_len;
+  char *message;
+  packet *head;
+}packet_list; 
 
 
 #endif

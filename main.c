@@ -28,9 +28,9 @@ int set_nonblock(int sockfd)
  * \return Descritor do socket
  */
 
-static int socket_connect(server_message *message)
+static int socket_connect()
 {
-  int ret = 0;
+  int ret = 0, sockfd = 0;
   struct addrinfo hints, *servinfo, *aux;
 
   memset(&hints, 0, sizeof hints);
@@ -45,16 +45,16 @@ static int socket_connect(server_message *message)
 
   for (aux = servinfo; aux != NULL; aux = aux->ai_next)
   {
-    if ((message->sockfd = socket(aux->ai_family, aux->ai_socktype,
+    if ((sockfd = socket(aux->ai_family, aux->ai_socktype,
          aux->ai_protocol)) == -1)
     {
       fprintf(stderr, "Socket error: %s\n", strerror(errno));
       continue;
     }
 
-    if (connect(message->sockfd, aux->ai_addr, aux->ai_addrlen) == -1)
+    if (connect(sockfd, aux->ai_addr, aux->ai_addrlen) == -1)
     {
-      close(message->sockfd);
+      close(sockfd);
       fprintf(stderr, "Connnect error: %s\n", strerror(errno));
       continue;
     }
@@ -63,7 +63,7 @@ static int socket_connect(server_message *message)
   }
   
   freeaddrinfo(servinfo);
-  return 0;
+  return sockfd;
 }
 
 /*
@@ -81,42 +81,56 @@ static int decode_table(int bits)
   return decode[bits]; 
 }
 
-static int decode_values(packed *pack)
-{
-  unpacked p;
-  p.unpack_n.u1= decode_table(pack->b2);
-  p.unpack_n.u2= decode_table(pack->b1);
-  p.unpack_n.u3= decode_table(pack->b4);
-  p.unpack_n.u4= decode_table(pack->b3);
-  p.unpack_n.u5= decode_table(pack->b6);
-  p.unpack_n.u6= decode_table(pack->b5);
-  p.unpack_n.u7= decode_table(pack->b8);
-  p.unpack_n.u8= decode_table(pack->b7);  
+static int decode_values(packet *pkt)
+{  
+  pkt->de_pack->de_nibble.n1 = decode_table(pkt->en_pack->b2);
+  pkt->de_pack->de_nibble.n2 = decode_table(pkt->en_pack->b1);
+  pkt->de_pack->de_nibble.n3 = decode_table(pkt->en_pack->b4);
+  pkt->de_pack->de_nibble.n4 = decode_table(pkt->en_pack->b3);
+  pkt->de_pack->de_nibble.n5 = decode_table(pkt->en_pack->b6);
+  pkt->de_pack->de_nibble.n6 = decode_table(pkt->en_pack->b5);
+  pkt->de_pack->de_nibble.n7 = decode_table(pkt->en_pack->b8);
+  pkt->de_pack->de_nibble.n8 = decode_table(pkt->en_pack->b7);
+return 0;
 }
-static int read_packet(server_message *message)
-{
-   int i;
-   unsigned char tmp;
-   unsigned char teste[7]={0xC6, 0x57, 0x54, 0x95, 0x5E, 0x9E, 0x6B};
-   unsigned char teste2=0x57;
-   memcpy(message->encoded_packet, teste + 1, PACKETSIZE - 2); 
-   for (i=0;i<2;i++)
-   {
-     tmp=message->encoded_packet[i];
-     message->encoded_packet[i] = message->encoded_packet[4 - i];
-     message->encoded_packet[4 - i] = tmp;
-   }
-   message->en_pack = &message->encoded_packet;
-  decode_values(message->en_pack);
-  //for (i = 0;i < 5; i++)
-  //  message->u_pack[i].all_values = message->encoded_packet[i];
-  //packed *p = (packed *) message->encoded_packet;
-     
 
-// memcpy(message->encoded_packet, message->packet + 1, PACKETSIZE - 2); 
-    // packed *p = (packed * ) message->encoded_packet;    
+static int invert_packet(packet *pkt)
+{
+  int i;
+  unsigned char tmp;
+  for (i=0;i<2;i++)
+  {
+    tmp=pkt->encoded_packet[i];
+    pkt->encoded_packet[i] = pkt->encoded_packet[4 - i];
+    pkt->encoded_packet[4 - i] = tmp;
+  }
+return 0;
+}
+
+static int read_packet(packet *pkt)
+{
   return 0;
 }
+
+static packet *add_packet(packet_list *pkt_list)
+{
+  packet *pkt;
+  pkt = calloc(1, sizeof(*pkt));
+  if (pkt == NULL)
+    return NULL;
+  if (pkt_list->head == NULL)
+    pkt_list->head = pkt;
+  else
+  {
+    packet *i = pkt_list->head;
+    while (i->next)
+      i = i->next;
+    i->next = pkt;
+  }
+  pkt_list->list_len++;
+  return pkt;
+}
+
 /*!
  * \brief Copia toda a mensagem enviada pelo servidor  
  * 
@@ -126,48 +140,89 @@ static int read_packet(server_message *message)
  * \return 0 se for OK
  * \return -1 se der algum erro
  */
-static int get_server_message_and_decode(server_message *message)
+static int get_server_message(packet_list *pkt_list, int sockfd)
 {
-  //int nread = 0;
-  read_packet(message);
-  /*do
+  int nread = 0, finish = 0;
+  add_packet(pkt_list);
+  packet *pkt = pkt_list->head;
+  do
   {
-    if ((nread = recv(message->sockfd, message->buffer + message->bytes_read, PACKETSIZE, 0)) <= 0)
+    if ((nread = recv(sockfd, pkt->full_packet, PACKETSIZE, 0)) <= 0)
       return -1;
-    memcpy(message->packet, message->buffer + message->bytes_read, PACKETSIZE);
-    message->bytes_read += nread;
-  } while (read_packet(message) == 0);*/
+    memcpy(pkt->encoded_packet, pkt->full_packet + 1, PACKETSIZE - 2);  
+    if (strchr(pkt->full_packet,END_TRANS) != NULL)
+      finish++;
+    pkt = add_packet(pkt_list);
+  } while (!finish);
   return 0;
 }
 
+static int concatenate_bytes(packet_list *pkt_list, packet *pkt)
+{
+  strcat(pkt_list->message, (char *) pkt->de_pack->message.byte1); 
+  strcat(pkt_list->message, (char *) pkt->de_pack->message.byte2); 
+  strcat(pkt_list->message, (char *) pkt->de_pack->message.byte3); 
+  strcat(pkt_list->message, (char *) pkt->de_pack->message.byte4);
+return 0; 
+}
 
+static int decode_message(packet_list *pkt_list)
+{
+  pkt_list->message = calloc(1, (sizeof(char) * pkt_list->list_len * 4)); //4 bytes para cada pacote convertido
+  if (pkt_list->message == NULL)
+    return -1;
+  
+  packet *pkt = pkt_list->head;
+  while (pkt != NULL)
+  {
+    invert_packet(pkt);
+    pkt->en_pack = (encoded *) &pkt->encoded_packet;
+    decode_values(pkt);
+    concatenate_bytes(pkt_list, pkt);
+    pkt = pkt->next;    
+  }
+return 0;
+}
+static int encode_message(packet *pkt)
+{
+
+}
+
+static int send_message(packet *pkt)
+{
+
+}
 int main()
-{  
-  server_message message;
+{ 
+  int sockfd = 0; 
+  packet_list pkt_list;
+  
+  memset(&pkt_list, 0, sizeof(pkt_list));
+
+  if ((sockfd = socket_connect()) < 0)
+    goto error;
+
+  if (set_nonblock(sockfd) < 0)
+    goto error;
+  
+  if (get_server_message(&pkt_list, sockfd) < 0)
+    goto error;
+  
+  if (decode_message(&pkt_list) < 0)
+    goto error;
     
-  memset(&message, 0, sizeof(message));
-
-  //if (socket_connect(&message) < 0)
-//    goto error;
-
-  //if (set_nonblock(message.sockfd) < 0)
-    //goto error;
+  if (encode_message(pkt_list.head) < 0)
+    goto error;  
   
-  if (get_server_message_and_decode(&message) == -1)
-   goto error;
-  
-  //if (decode_message($message) == -1)
-  // goto error;
-   
+  if (send_message(pkt_list.head) < 0)
+    goto error;
 
-  //printf("Mensagem %04x", message.buffer);
- 
-  close(message.sockfd);
+  close(sockfd);
   return 0;
       
 error:    
-    if (message.sockfd)
-      close(message.sockfd);
+    if (sockfd)
+      close(sockfd);
   return -1;
 }
 
