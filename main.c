@@ -82,15 +82,16 @@ static int decode_table(int bits)
 }
 
 static int decode_values(packet *pkt)
-{  
-  pkt->de_pack->de_nibble.n1 = decode_table(pkt->en_pack->b2);
-  pkt->de_pack->de_nibble.n2 = decode_table(pkt->en_pack->b1);
-  pkt->de_pack->de_nibble.n3 = decode_table(pkt->en_pack->b4);
-  pkt->de_pack->de_nibble.n4 = decode_table(pkt->en_pack->b3);
-  pkt->de_pack->de_nibble.n5 = decode_table(pkt->en_pack->b6);
-  pkt->de_pack->de_nibble.n6 = decode_table(pkt->en_pack->b5);
-  pkt->de_pack->de_nibble.n7 = decode_table(pkt->en_pack->b8);
-  pkt->de_pack->de_nibble.n8 = decode_table(pkt->en_pack->b7);
+{   
+//  pkt->de_pack = calloc(1, sizeof(*pkt->de_pack));
+  pkt->de_pack.de_nibble.n1 = decode_table(pkt->en_pack->b2);
+  pkt->de_pack.de_nibble.n2 = decode_table(pkt->en_pack->b1);
+  pkt->de_pack.de_nibble.n3 = decode_table(pkt->en_pack->b4);
+  pkt->de_pack.de_nibble.n4 = decode_table(pkt->en_pack->b3);
+  pkt->de_pack.de_nibble.n5 = decode_table(pkt->en_pack->b6);
+  pkt->de_pack.de_nibble.n6 = decode_table(pkt->en_pack->b5);
+  pkt->de_pack.de_nibble.n7 = decode_table(pkt->en_pack->b8);
+  pkt->de_pack.de_nibble.n8 = decode_table(pkt->en_pack->b7);
 return 0;
 }
 
@@ -105,11 +106,6 @@ static int invert_packet(packet *pkt)
     pkt->encoded_packet[4 - i] = tmp;
   }
 return 0;
-}
-
-static int read_packet(packet *pkt)
-{
-  return 0;
 }
 
 static packet *add_packet(packet_list *pkt_list)
@@ -157,12 +153,13 @@ static int get_server_message(packet_list *pkt_list, int sockfd)
   return 0;
 }
 
-static int concatenate_bytes(packet_list *pkt_list, packet *pkt)
+static int concatenate_bytes(char *message, decoded *de_msg)
 {
-  strcat(pkt_list->message, (char *) pkt->de_pack->message.byte1); 
-  strcat(pkt_list->message, (char *) pkt->de_pack->message.byte2); 
-  strcat(pkt_list->message, (char *) pkt->de_pack->message.byte3); 
-  strcat(pkt_list->message, (char *) pkt->de_pack->message.byte4);
+//  memcpy(message, bytes->message, sizeof(bytes->message));
+  strcat(message, (const char *) de_msg->message.byte1); 
+  strcat(message, (const char *) de_msg->message.byte2); 
+//  strcat(message, (char *) msg->byte3); 
+ // strcat(message, (char *) msg->byte4);
 return 0; 
 }
 
@@ -178,19 +175,19 @@ static int decode_message(packet_list *pkt_list)
     invert_packet(pkt);
     pkt->en_pack = (encoded *) &pkt->encoded_packet;
     decode_values(pkt);
-    concatenate_bytes(pkt_list, pkt);
+    concatenate_bytes(pkt_list->message, &pkt->de_pack);
     pkt = pkt->next;    
   }
 return 0;
 }
 static int encode_message(packet *pkt)
 {
-
+return 0;
 }
 
 static int send_message(packet *pkt)
 {
-
+return 0;
 }
 int main()
 { 

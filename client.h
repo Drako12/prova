@@ -66,7 +66,7 @@ typedef union decoded_
 typedef struct packets_
 {
   encoded *en_pack;
-  decoded *de_pack;
+  decoded de_pack;
   unsigned char encoded_packet[PACKETSIZE - 2];
   char full_packet[PACKETSIZE];
   unsigned char decoded_packet[PACKETSIZE - 2];
