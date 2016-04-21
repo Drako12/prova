@@ -161,7 +161,10 @@ static int get_server_message(packet_list *pkt_list, int sockfd)
   do
   {
     if ((nread = recv(sockfd, pkt->full_packet, PACKETSIZE, 0)) <= 0)
+    {
+      fprintf(stderr, "recv error: %s\n", strerror(errno));
       return -1;
+    }   
     memcpy(pkt->encoded_packet, pkt->full_packet + 1, PACKETSIZE - 2);  
     if (strchr(pkt->full_packet,END_TRANS) != NULL)
       finish++;
@@ -217,16 +220,19 @@ static int invert_message(char *message)
 return 0;
 }
 
-static int build_bytes(packet *pkt)
-{
-  pkt->en_bytes = (encoded_bytes *) &pkt->en_pack;
-  
-  return 0;
-}
-
 static int build_packet(packet *pkt)
-{
-  build_bytes(pkt);
+{ 
+  pkt->en_bytes.encod.b1 = pkt->en_pack->b1; 
+  pkt->en_bytes.encod.b2 = pkt->en_pack->b2; 
+  pkt->en_bytes.encod.b3 = pkt->en_pack->b3; 
+  pkt->en_bytes.encod.b4 = pkt->en_pack->b4; 
+  pkt->en_bytes.encod.b5 = pkt->en_pack->b5; 
+  pkt->en_bytes.encod.b6 = pkt->en_pack->b6; 
+  pkt->en_bytes.encod.b7 = pkt->en_pack->b7; 
+  pkt->en_bytes.encod.b8 = pkt->en_pack->b8; 
+  //char temp[5];
+ // pkt->en_bytes = (e1 *) pkt->en_pack;  
+  //memcpy(temp, (char *) pkt->en_pack, 5);
   return 0;
 }
 
@@ -262,10 +268,10 @@ int main()
   
   memset(&pkt_list, 0, sizeof(pkt_list));
 
-  if ((sockfd = socket_connect()) < 0)
-    goto error;
-
   if (set_nonblock(sockfd) < 0)
+    goto error;
+  
+  if ((sockfd = socket_connect()) < 0)
     goto error;
   
   if (get_server_message(&pkt_list, sockfd) < 0)

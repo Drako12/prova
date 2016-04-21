@@ -17,7 +17,7 @@
 #include <fcntl.h>
 #include <ctype.h>
 #define BUFSIZE BUFSIZ
-#define HTTP_PORT "50000"
+#define HTTP_PORT "50002"
 #define IP_ADDR "54.94.159.157" 
 #define PACKETSIZE 7
 #define HIGH_NIBBLE 240
@@ -43,13 +43,29 @@ typedef struct __attribute__((packed)) encoded_
   unsigned int b1: 5;
 }encoded;
 
-typedef struct __attribute__((packed)) encoded_bytes_ 
+typedef union e1_
 {
+  struct __attribute__((packed)) encod_
+  {
+  unsigned int b1: 5;
+  unsigned int b2: 5;
+  unsigned int b3: 5;
+  unsigned int b4: 5;
+  unsigned int b5: 5;
+  unsigned int b6: 5;
+  unsigned int b7: 5;
+  unsigned int b8: 5;
+  }encod;
+
+  struct __attribute__((packed)) encoded_bytes_ 
+  {
   unsigned int byte1: 8;
   unsigned int byte2: 8;
   unsigned int byte3: 8;
   unsigned int byte4: 8;
-}encoded_bytes;
+  unsigned int byte5: 8;
+  }encoded_bytes;
+}e1;
 
 typedef union decoded_
 {
@@ -78,7 +94,7 @@ typedef struct packets_
 {
   encoded *en_pack;
   decoded de_pack;
-  encoded_bytes *en_bytes;
+  e1 en_bytes;
   unsigned char encoded_packet[PACKETSIZE - 2];
   char full_packet[PACKETSIZE];
   char full_en_packet[PACKETSIZE];
