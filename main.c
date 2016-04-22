@@ -101,14 +101,14 @@ return 0;
 
 static int encode_values(packet *pkt)
 {   
-  pkt->en_pack->b1 = encode_table((pkt->decoded_packet[0] & HIGH_NIBBLE) >> 4);
-  pkt->en_pack->b2 = encode_table(pkt->decoded_packet[0] & LOW_NIBBLE);
-  pkt->en_pack->b3 = encode_table((pkt->decoded_packet[1] & HIGH_NIBBLE) >> 4);
-  pkt->en_pack->b4 = encode_table(pkt->decoded_packet[1] & LOW_NIBBLE);
-  pkt->en_pack->b5 = encode_table((pkt->decoded_packet[2] & HIGH_NIBBLE) >> 4);
-  pkt->en_pack->b6 = encode_table(pkt->decoded_packet[2] & LOW_NIBBLE);
-  pkt->en_pack->b7 = encode_table((pkt->decoded_packet[3] & HIGH_NIBBLE) >> 4);
-  pkt->en_pack->b8 = encode_table(pkt->decoded_packet[3] & LOW_NIBBLE);
+  pkt->en_bytes.encod.b2 = encode_table((pkt->decoded_packet[0] & HIGH_NIBBLE) >> 4);
+  pkt->en_bytes.encod.b1 = encode_table(pkt->decoded_packet[0] & LOW_NIBBLE);
+  pkt->en_bytes.encod.b4 = encode_table((pkt->decoded_packet[1] & HIGH_NIBBLE) >> 4);
+  pkt->en_bytes.encod.b3 = encode_table(pkt->decoded_packet[1] & LOW_NIBBLE);
+  pkt->en_bytes.encod.b6 = encode_table((pkt->decoded_packet[2] & HIGH_NIBBLE) >> 4);
+  pkt->en_bytes.encod.b5 = encode_table(pkt->decoded_packet[2] & LOW_NIBBLE);
+  pkt->en_bytes.encod.b8 = encode_table((pkt->decoded_packet[3] & HIGH_NIBBLE) >> 4);
+  pkt->en_bytes.encod.b7 = encode_table(pkt->decoded_packet[3] & LOW_NIBBLE);
 return 0;
 }
 
@@ -129,6 +129,7 @@ static packet *add_packet(packet_list *pkt_list)
 {
   packet *pkt;
   pkt = calloc(1, sizeof(*pkt));
+
   if (pkt == NULL)
     return NULL;
   if (pkt_list->head == NULL)
@@ -156,19 +157,19 @@ static packet *add_packet(packet_list *pkt_list)
 static int get_server_message(packet_list *pkt_list, int sockfd)
 {
   int nread = 0, finish = 0;
-  add_packet(pkt_list);
   packet *pkt = pkt_list->head;
   do
   {
+    pkt = add_packet(pkt_list);
     if ((nread = recv(sockfd, pkt->full_packet, PACKETSIZE, 0)) <= 0)
     {
       fprintf(stderr, "recv error: %s\n", strerror(errno));
       return -1;
     }   
     memcpy(pkt->encoded_packet, pkt->full_packet + 1, PACKETSIZE - 2);  
-    if (strchr(pkt->full_packet,END_TRANS) != NULL)
+    if (strchr(pkt->full_packet, END_TRANS) != NULL)
       finish++;
-    pkt = add_packet(pkt_list);
+
   } while (!finish);
   return 0;
 }
@@ -222,17 +223,16 @@ return 0;
 
 static int build_packet(packet *pkt)
 { 
-  pkt->en_bytes.encod.b1 = pkt->en_pack->b1; 
-  pkt->en_bytes.encod.b2 = pkt->en_pack->b2; 
-  pkt->en_bytes.encod.b3 = pkt->en_pack->b3; 
-  pkt->en_bytes.encod.b4 = pkt->en_pack->b4; 
-  pkt->en_bytes.encod.b5 = pkt->en_pack->b5; 
-  pkt->en_bytes.encod.b6 = pkt->en_pack->b6; 
-  pkt->en_bytes.encod.b7 = pkt->en_pack->b7; 
-  pkt->en_bytes.encod.b8 = pkt->en_pack->b8; 
-  //char temp[5];
- // pkt->en_bytes = (e1 *) pkt->en_pack;  
-  //memcpy(temp, (char *) pkt->en_pack, 5);
+  pkt->full_en_packet[0] = START;
+  if (pkt->next == NULL)
+    pkt->full_en_packet[6] = END_TRANS;
+  else
+    pkt->full_en_packet[6] = END_PACKET;
+  pkt->full_en_packet[1] = pkt->en_bytes.encoded_bytes.byte5; 
+  pkt->full_en_packet[2] = pkt->en_bytes.encoded_bytes.byte4; 
+  pkt->full_en_packet[3] = pkt->en_bytes.encoded_bytes.byte3; 
+  pkt->full_en_packet[4] = pkt->en_bytes.encoded_bytes.byte2; 
+  pkt->full_en_packet[5] = pkt->en_bytes.encoded_bytes.byte1; 
   return 0;
 }
 

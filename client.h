@@ -65,6 +65,8 @@ typedef union e1_
   unsigned int byte4: 8;
   unsigned int byte5: 8;
   }encoded_bytes;
+  
+  unsigned long int whole: 40;
 }e1;
 
 typedef union decoded_
