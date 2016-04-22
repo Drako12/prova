@@ -27,11 +27,11 @@ typedef enum packet_type_
 {
   START = 0xC6,
   END_PACKET = 0x6B,
-  END_TRANS = 0x21
-
+  END_TRANS = 0x21,
+  SPACE = 0x20
 }packet_type; 
 
-typedef struct __attribute__((packed)) encoded_
+struct __attribute__((packed)) en_tmp
 {
   unsigned int b8: 5;
   unsigned int b7: 5;
@@ -41,38 +41,27 @@ typedef struct __attribute__((packed)) encoded_
   unsigned int b3: 5;
   unsigned int b2: 5;
   unsigned int b1: 5;
-}encoded;
+};
 
-typedef union e1_
+struct __attribute__((packed)) en_msg 
 {
-  struct __attribute__((packed)) encod_
-  {
-  unsigned int b1: 5;
-  unsigned int b2: 5;
-  unsigned int b3: 5;
-  unsigned int b4: 5;
-  unsigned int b5: 5;
-  unsigned int b6: 5;
-  unsigned int b7: 5;
-  unsigned int b8: 5;
-  }encod;
+  unsigned char byte1: 8;
+  unsigned char byte2: 8;
+  unsigned char byte3: 8;
+  unsigned char byte4: 8;
+  unsigned char byte5: 8;
+};
 
-  struct __attribute__((packed)) encoded_bytes_ 
-  {
-  unsigned int byte1: 8;
-  unsigned int byte2: 8;
-  unsigned int byte3: 8;
-  unsigned int byte4: 8;
-  unsigned int byte5: 8;
-  }encoded_bytes;
-  
-  unsigned long int whole: 40;
-}e1;
-
-typedef union decoded_
+struct __attribute__((packed)) de_msg 
 {
-  struct __attribute__((packed)) de_nibble_
-  {
+    unsigned int byte1: 8;
+    unsigned int byte2: 8;
+    unsigned int byte3: 8;
+    unsigned int byte4: 8;
+};
+
+struct __attribute__((packed)) de_nibble
+{
   unsigned int n1: 4;
   unsigned int n2: 4;
   unsigned int n3: 4;
@@ -81,22 +70,29 @@ typedef union decoded_
   unsigned int n6: 4;
   unsigned int n7: 4;
   unsigned int n8: 4; 
-  }de_nibble;
-  
-  struct __attribute__((packed)) message_ 
-  {
-    unsigned int byte1: 8;
-    unsigned int byte2: 8;
-    unsigned int byte3: 8;
-    unsigned int byte4: 8;
-  }message;
-}decoded;
+};
 
+typedef union encode_
+{
+  unsigned long var;
+  unsigned long int whole: 40;
+  struct en_tmp encoded_tmp;
+  struct en_msg encoded_message;
+}encode;
+
+typedef union decode_
+{
+  unsigned long var;
+  struct de_msg decoded_message;
+  struct de_nibble nibble;
+  struct en_tmp encoded_tmp;  
+}decode;
+  
 typedef struct packets_
 {
-  encoded *en_pack;
-  decoded de_pack;
-  e1 en_bytes;
+  encode en_pack;
+  decode de_pack;
+  struct en_tmp *en_tmp_;
   unsigned char encoded_packet[PACKETSIZE - 2];
   char full_packet[PACKETSIZE];
   char full_en_packet[PACKETSIZE];

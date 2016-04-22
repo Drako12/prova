@@ -72,7 +72,7 @@ static int socket_connect()
  * o valor do indice e' o nibble de saida (codificado). 
  * Por exemplo: A ultima entrada da tabela e' o 15 (1111) e o valor
  * correspondente a ele e' o 11101 (29). No indice 29 se encontra
- * o valor 15.
+ * o valor 15
  *
  */
 static int decode_table(int bits)
@@ -88,27 +88,28 @@ static int encode_table(int bits)
 }
 static int decode_values(packet *pkt)
 {   
-  pkt->de_pack.de_nibble.n1 = decode_table(pkt->en_pack->b2);
-  pkt->de_pack.de_nibble.n2 = decode_table(pkt->en_pack->b1);
-  pkt->de_pack.de_nibble.n3 = decode_table(pkt->en_pack->b4);
-  pkt->de_pack.de_nibble.n4 = decode_table(pkt->en_pack->b3);
-  pkt->de_pack.de_nibble.n5 = decode_table(pkt->en_pack->b6);
-  pkt->de_pack.de_nibble.n6 = decode_table(pkt->en_pack->b5);
-  pkt->de_pack.de_nibble.n7 = decode_table(pkt->en_pack->b8);
-  pkt->de_pack.de_nibble.n8 = decode_table(pkt->en_pack->b7);
+  pkt->de_pack.nibble.n1 = decode_table(pkt->en_tmp_->b2);
+  pkt->de_pack.nibble.n2 = decode_table(pkt->en_tmp_->b1);
+  pkt->de_pack.nibble.n3 = decode_table(pkt->en_tmp_->b4);
+  pkt->de_pack.nibble.n4 = decode_table(pkt->en_tmp_->b3);
+  pkt->de_pack.nibble.n5 = decode_table(pkt->en_tmp_->b6);
+  pkt->de_pack.nibble.n6 = decode_table(pkt->en_tmp_->b5);
+  pkt->de_pack.nibble.n7 = decode_table(pkt->en_tmp_->b8);
+  pkt->de_pack.nibble.n8 = decode_table(pkt->en_tmp_->b7);
 return 0;
 }
 
 static int encode_values(packet *pkt)
 {   
-  pkt->en_bytes.encod.b2 = encode_table((pkt->decoded_packet[0] & HIGH_NIBBLE) >> 4);
-  pkt->en_bytes.encod.b1 = encode_table(pkt->decoded_packet[0] & LOW_NIBBLE);
-  pkt->en_bytes.encod.b4 = encode_table((pkt->decoded_packet[1] & HIGH_NIBBLE) >> 4);
-  pkt->en_bytes.encod.b3 = encode_table(pkt->decoded_packet[1] & LOW_NIBBLE);
-  pkt->en_bytes.encod.b6 = encode_table((pkt->decoded_packet[2] & HIGH_NIBBLE) >> 4);
-  pkt->en_bytes.encod.b5 = encode_table(pkt->decoded_packet[2] & LOW_NIBBLE);
-  pkt->en_bytes.encod.b8 = encode_table((pkt->decoded_packet[3] & HIGH_NIBBLE) >> 4);
-  pkt->en_bytes.encod.b7 = encode_table(pkt->decoded_packet[3] & LOW_NIBBLE);
+  pkt->en_pack.encoded_tmp.b1 = encode_table((pkt->decoded_packet[0] & HIGH_NIBBLE) >> 4);
+  pkt->en_pack.encoded_tmp.b2 = encode_table(pkt->decoded_packet[0] & LOW_NIBBLE);
+  pkt->en_pack.encoded_tmp.b3 = encode_table((pkt->decoded_packet[1] & HIGH_NIBBLE) >> 4);
+  pkt->en_pack.encoded_tmp.b4 = encode_table(pkt->decoded_packet[1] & LOW_NIBBLE);
+  pkt->en_pack.encoded_tmp.b5 = encode_table((pkt->decoded_packet[2] & HIGH_NIBBLE) >> 4);
+  pkt->en_pack.encoded_tmp.b6 = encode_table(pkt->decoded_packet[2] & LOW_NIBBLE);
+  pkt->en_pack.encoded_tmp.b7 = encode_table((pkt->decoded_packet[3] & HIGH_NIBBLE) >> 4);
+  pkt->en_pack.encoded_tmp.b8 = encode_table(pkt->decoded_packet[3] & LOW_NIBBLE);
+
 return 0;
 }
 
@@ -174,9 +175,9 @@ static int get_server_message(packet_list *pkt_list, int sockfd)
   return 0;
 }
 
-static int concatenate_bytes(char *message, decoded *de_msg)
+static int concatenate_bytes(char *message, decode *msg)
 {   
-  strncat(message, (const char *) &de_msg->message, 4);
+  strncat(message, (const char *) &msg->decoded_message, 4);
   return 0; 
 }
 
@@ -190,7 +191,8 @@ static int decode_message(packet_list *pkt_list)
   while (pkt != NULL)
   {
     invert_packet(pkt);
-    pkt->en_pack = (encoded *) &pkt->encoded_packet;
+    pkt->en_tmp_ = (struct en_tmp *) &pkt->encoded_packet;
+   // pkt->en_pack.var = pkt->encoded_packet;
     decode_values(pkt);
     concatenate_bytes(pkt_list->message, &pkt->de_pack);
     pkt = pkt->next;    
@@ -223,16 +225,23 @@ return 0;
 
 static int build_packet(packet *pkt)
 { 
+  int i;
   pkt->full_en_packet[0] = START;
   if (pkt->next == NULL)
     pkt->full_en_packet[6] = END_TRANS;
   else
     pkt->full_en_packet[6] = END_PACKET;
-  pkt->full_en_packet[1] = pkt->en_bytes.encoded_bytes.byte5; 
-  pkt->full_en_packet[2] = pkt->en_bytes.encoded_bytes.byte4; 
-  pkt->full_en_packet[3] = pkt->en_bytes.encoded_bytes.byte3; 
-  pkt->full_en_packet[4] = pkt->en_bytes.encoded_bytes.byte2; 
-  pkt->full_en_packet[5] = pkt->en_bytes.encoded_bytes.byte1; 
+  
+  pkt->full_en_packet[1] = pkt->en_pack.encoded_message.byte5; 
+  pkt->full_en_packet[2] = pkt->en_pack.encoded_message.byte4; 
+  pkt->full_en_packet[3] = pkt->en_pack.encoded_message.byte3; 
+  pkt->full_en_packet[4] = pkt->en_pack.encoded_message.byte2; 
+  pkt->full_en_packet[5] = pkt->en_pack.encoded_message.byte1;
+  for (i = 0; i <= 5; i++)
+  {
+    if (pkt->full_en_packet[i] == NULL) 
+      pkt->full_en_packet[i] = SPACE;  
+  }  
   return 0;
 }
 
@@ -252,15 +261,36 @@ static int encode_packets(packet *pkt, char *message)
 static int encode_message(packet *pkt, char *message)
 {   
   trim_spaces(message);
+  printf("Mensagem recebida: %s", message);  
   invert_message(message);
   encode_packets(pkt, message);
   return 0;
 }
 
-static int send_message(packet *pkt)
-{
+static int send_message(packet *pkt, int sockfd)
+{  
+  while (pkt != NULL)
+  {
+    if (send(sockfd, pkt->full_en_packet, PACKETSIZE, 0) < 0)
+    {
+    fprintf(stderr, "Send error:%s\n", strerror(errno));
+    return -1;
+    }
+    pkt = pkt->next;
+  }  
   return 0;
 }
+
+static int receive_confirmation(packet_list *pkt_list, int sockfd)
+{ 
+  pkt_list->head = NULL; 
+  get_server_message(pkt_list, sockfd);
+  decode_message(pkt_list);
+  trim_spaces(pkt_list->message);
+  printf("Confirmacao recebida: %s",pkt_list->message);  
+  return 0;
+}
+
 int main()
 { 
   int sockfd = 0; 
@@ -283,9 +313,12 @@ int main()
   if (encode_message(pkt_list.head, pkt_list.message) < 0)
     goto error;  
   
-  if (send_message(pkt_list.head) < 0)
+  if (send_message(pkt_list.head, sockfd) < 0)
     goto error;
-
+  
+  if (receive_confirmation(&pkt_list, sockfd) < 0)
+    goto error;
+  
   close(sockfd);
   return 0;
       
