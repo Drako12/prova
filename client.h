@@ -20,6 +20,7 @@
 #define HTTP_PORT "50002"
 #define IP_ADDR "54.94.159.157" 
 #define PACKETSIZE 7
+#define PACKET_MSG_SIZE 4
 #define HIGH_NIBBLE 240
 #define LOW_NIBBLE 15
 
@@ -74,15 +75,14 @@ struct __attribute__((packed)) de_nibble
 
 typedef union encode_
 {
-  unsigned long var;
-  unsigned long int whole: 40;
+  unsigned long full_pkt;
   struct en_tmp encoded_tmp;
   struct en_msg encoded_message;
 }encode;
 
 typedef union decode_
 {
-  unsigned long var;
+  unsigned long full_pkt;
   struct de_msg decoded_message;
   struct de_nibble nibble;
   struct en_tmp encoded_tmp;  

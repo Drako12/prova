@@ -68,12 +68,13 @@ static int socket_connect()
 
 /*
  * A tabela de decoficacao foi feita da seguinte maneira, o indice do 
- * vetor e' o valor em decimal do nibble de entrada(decodificado), e 
- * o valor do indice e' o nibble de saida (codificado). 
- * Por exemplo: A ultima entrada da tabela e' o 15 (1111) e o valor
- * correspondente a ele e' o 11101 (29). No indice 29 se encontra
- * o valor 15
- *
+ * vetor e' o valor em decimal dos 5 bits de saida (codificado), e 
+ * o valor da posicao do vetor e' o nibble (4 bits) de entrada (decodificado). 
+ * Por exemplo: Se eu quiser saber o valor decodificado do 01001 (9)
+ * basta ir no indice 9 (decode[9]) e pegar o valor, que seria 1 (0001) nesse caso
+ * 
+ * \param[in] bits indice (valor em decimal dos 5 bits de saida da tabela)
+ * \param[out] decode valor de saida decodificado
  */
 static int decode_table(int bits)
 {  
@@ -81,12 +82,35 @@ static int decode_table(int bits)
   return decode[bits]; 
 }
 
+/*
+ * A tabela de coficacao foi feita da seguinte maneira, o indice do 
+ * vetor e' o valor em decimal dos 4 bits de entrada (decodificado), e 
+ * o valor da posicao do vetor sao os 5 bits de saida (codificado). 
+ * Por exemplo: Se eu quiser saber o valor codificado do 0101 (5)
+ * basta ir no indice 5 (decode[5]) e pegar o valor, que seria 11 (01011) nesse caso
+ * 
+ * \param[in] bits indice (valor em decimal do nibble de entrada da tabela)
+ * \param[out] decode valor de entrada codificado
+ */
 static int encode_table(int bits)
 {
   int code[16] = {30,9,20,21,10,11,14,15,18,19,22,23,26,27,28,29};
   return code[bits];
 }
-static int decode_values(packet *pkt)
+
+
+/*!
+ * \brief Aplica a tabela de conversao no pacote. Os bits estao em
+ * uma estrutura com bit fields de 5 bits que e' convertida utilizando
+ * a  tabela e enderecados a uma estrutura em um union com bit fields
+ * de 4 bits cada, o union contem uma segunda estrutura com bit fields
+ * de 8 bits para representar os bytes.
+ *
+ * \param[out] pkt Pacote 
+ * 
+ */
+
+static void decode_values(packet *pkt)
 {   
   pkt->de_pack.nibble.n1 = decode_table(pkt->en_tmp_->b2);
   pkt->de_pack.nibble.n2 = decode_table(pkt->en_tmp_->b1);
@@ -96,10 +120,20 @@ static int decode_values(packet *pkt)
   pkt->de_pack.nibble.n6 = decode_table(pkt->en_tmp_->b5);
   pkt->de_pack.nibble.n7 = decode_table(pkt->en_tmp_->b8);
   pkt->de_pack.nibble.n8 = decode_table(pkt->en_tmp_->b7);
-return 0;
 }
 
-static int encode_values(packet *pkt)
+/*!
+ * \brief Aplica a tabela de conversao no pacote. Os bytes estao em
+ * uma variavel, com uma operacao logica sao capturados os bits 
+ * corretos e depois de encodificados eles sao enderecados a uma
+ * estrutura em um union com bit fields de 5 bits cada, o union
+ * contem uma segunda estrutura com bit fields de 8 bits para
+ * representar os bytes.
+ *
+ * \param[out] pkt Pacote 
+ * 
+ */
+static void encode_values(packet *pkt)
 {   
   pkt->en_pack.encoded_tmp.b1 = encode_table((pkt->decoded_packet[0] & HIGH_NIBBLE) >> 4);
   pkt->en_pack.encoded_tmp.b2 = encode_table(pkt->decoded_packet[0] & LOW_NIBBLE);
@@ -109,11 +143,15 @@ static int encode_values(packet *pkt)
   pkt->en_pack.encoded_tmp.b6 = encode_table(pkt->decoded_packet[2] & LOW_NIBBLE);
   pkt->en_pack.encoded_tmp.b7 = encode_table((pkt->decoded_packet[3] & HIGH_NIBBLE) >> 4);
   pkt->en_pack.encoded_tmp.b8 = encode_table(pkt->decoded_packet[3] & LOW_NIBBLE);
-
-return 0;
 }
-
-static int invert_packet(packet *pkt)
+/*!
+ * \Brief Essa funcao inverte os bytes do pacote para ficar de acordo com o 
+ * endianness.
+ *
+ * \param[out] pkt Pacote com os bytes da mensagem.
+ *
+ */
+static void invert_packet(packet *pkt)
 {
   int i;
   unsigned char tmp;
@@ -123,8 +161,16 @@ static int invert_packet(packet *pkt)
     pkt->encoded_packet[i] = pkt->encoded_packet[4 - i];
     pkt->encoded_packet[4 - i] = tmp;
   }
-return 0;
 }
+
+/*!
+ * \Brief Adiciona um pacote a lista de pacotes
+ *
+ * \param[out] pkt_list Lista de pacotes
+ * 
+ * return pkt Retorna pacote adicionado a lista
+ * return pkt NULL se der erro adicionando pacote a lista
+ */
 
 static packet *add_packet(packet_list *pkt_list)
 {
@@ -147,10 +193,12 @@ static packet *add_packet(packet_list *pkt_list)
 }
 
 /*!
- * \brief Copia toda a mensagem enviada pelo servidor  
+ * \brief Copia toda a mensagem enviada pelo servidor para uma
+ * lista de pacotes, os pacotes sao copiados ate detectar um
+ * pacote contendo um byte de fim de transmissao (END_TRANS)
  * 
  * \param[in] sockfd Descritor do socket
- * \param[out] buffer Variavel que contem a mensagem da resposta do HTTP GET
+ * \param[out] pkt_list Lista de pacotes
  * 
  * \return 0 se for OK
  * \return -1 se der algum erro
@@ -161,10 +209,14 @@ static int get_server_message(packet_list *pkt_list, int sockfd)
   packet *pkt = pkt_list->head;
   do
   {
-    pkt = add_packet(pkt_list);
+    if ((pkt = add_packet(pkt_list)) == NULL)
+    {
+      fprintf(stderr, "Erro adicionando pacote a lista: %s\n", strerror(errno));
+      return -1;
+    }
     if ((nread = recv(sockfd, pkt->full_packet, PACKETSIZE, 0)) <= 0)
     {
-      fprintf(stderr, "recv error: %s\n", strerror(errno));
+      fprintf(stderr, "Erro recebendo pacote: %s\n", strerror(errno));
       return -1;
     }   
     memcpy(pkt->encoded_packet, pkt->full_packet + 1, PACKETSIZE - 2);  
@@ -175,11 +227,26 @@ static int get_server_message(packet_list *pkt_list, int sockfd)
   return 0;
 }
 
-static int concatenate_bytes(char *message, decode *msg)
+/*!
+ * \brief Monta mensagem concatenando os bytes dos pacotes  
+ * 
+ * \param[in] *msg Estrututura com os bytes do pacote
+ * \param[out] message Mensagem vinda do servidor
+ * 
+ */
+static void concatenate_bytes(char *message, decode *msg)
 {   
   strncat(message, (const char *) &msg->decoded_message, 4);
-  return 0; 
 }
+
+/*!
+ * \brief Decodifica mensagem vinda do servidor  
+ * 
+ * \param[out] pkt_list Lista de pacotes 
+ * 
+ * \return 0 se for OK
+ * \return -1 se der algum erro
+ */
 
 static int decode_message(packet_list *pkt_list)
 {
@@ -192,24 +259,36 @@ static int decode_message(packet_list *pkt_list)
   {
     invert_packet(pkt);
     pkt->en_tmp_ = (struct en_tmp *) &pkt->encoded_packet;
-   // pkt->en_pack.var = pkt->encoded_packet;
     decode_values(pkt);
     concatenate_bytes(pkt_list->message, &pkt->de_pack);
     pkt = pkt->next;    
   }
   return 0;
 }
-static int trim_spaces(char *message)
+
+/*!
+ * \brief Remove espacos em branco do final da string  
+ * 
+ * \param[out] message String contendo a mensagem completa
+ *
+ *
+ */
+static void trim_spaces(char *message)
 {
   char *end_string;
   end_string = message + strlen(message) - 1;
   while (isspace(*end_string))
     end_string--;
   *(end_string + 1) = 0;
-return 0;
 }
 
-static int invert_message(char *message)
+/*!
+ * \brief Inverte a mensagem completa 
+ * 
+ * \param[out] message String contendo a mensagem completa 
+ * 
+ */
+static void invert_message(char *message)
 {
   int i, len;
   char tmp;
@@ -220,10 +299,18 @@ static int invert_message(char *message)
     message[i] = message[len - i];
     message[len - i] = tmp;
   }
-return 0;
 }
 
-static int build_packet(packet *pkt)
+/*!
+ * \brief Monta os pacotes para enviar ao servidor adicionando o 
+ * o byte de start e de end nos pacotes inicial e intermediarios e
+ * o de final de transmissao no pacote final.
+ * 
+ * \param[out] pkt_list Lista de pacotes 
+ * 
+ */
+
+static void build_packet(packet *pkt)
 { 
   int i;
   pkt->full_en_packet[0] = START;
@@ -242,30 +329,57 @@ static int build_packet(packet *pkt)
     if (pkt->full_en_packet[i] == NULL) 
       pkt->full_en_packet[i] = SPACE;  
   }  
-  return 0;
 }
 
-static int encode_packets(packet *pkt, char *message)
+/*!
+ * \brief Codifica os pacotes para enviar ao servidor. 
+ * Essa funcao ira pegar a mensagem vinda do servidor, copiar de
+ * 4 em 4 bytes (PACKET_MSG_SIZE) para a lista de pacotes, codificar
+ * os valores e montar o pacote final para ser enviado.
+ * 
+ * \param[in] mensagem completa vinda do servidor
+ * \param[out] pkt_list Lista de pacotes 
+ * 
+ */
+
+static void encode_packets(packet *pkt, char *message)
 {
   while (pkt != NULL)
   {    
-    memcpy (pkt->decoded_packet, message, 4);      
+    memcpy (pkt->decoded_packet, message, PACKET_MSG_SIZE);      
     encode_values(pkt);
     build_packet(pkt);  
     pkt = pkt->next;
-    message = message + 4;    
+    message = message + PACKET_MSG_SIZE;    
   }  
-  return 0;
 }
 
-static int encode_message(packet *pkt, char *message)
+/*!
+ * \brief Codifica mensagem vinda do servidor. Essa funcao vai  
+ *  pegar a mensagem, remover os espacos em branco, inverter e 
+ *  codificar os pacotes um a um.
+ *
+ * \param[out] pkt_list Lista de pacotes 
+ * \para[out] message Mensagem vinda do servidor
+ *
+ */
+
+static void encode_message(packet *pkt, char *message)
 {   
   trim_spaces(message);
   printf("Mensagem recebida: %s", message);  
   invert_message(message);
   encode_packets(pkt, message);
-  return 0;
 }
+
+/*!
+ * \brief Envia a mensagem para o servidor pacote a pacote  
+ * 
+ * \param[in] pkt Pacote para ser enviado 
+ * \param[in] Descritor do socket  
+ * \return 0 se for OK
+ * \return -1 se der algum erro
+ */
 
 static int send_message(packet *pkt, int sockfd)
 {  
@@ -273,22 +387,33 @@ static int send_message(packet *pkt, int sockfd)
   {
     if (send(sockfd, pkt->full_en_packet, PACKETSIZE, 0) < 0)
     {
-    fprintf(stderr, "Send error:%s\n", strerror(errno));
-    return -1;
+      fprintf(stderr, "Erro enviando pacote:%s\n", strerror(errno));
+      return -1;
     }
     pkt = pkt->next;
   }  
   return 0;
 }
 
+/*!
+ * \brief Funcao para receber confirmacao do servidor  
+ * 
+ * \param[in] pkt_list Lista de pacotes 
+ * \param[in] Descritor do socket
+ *
+ * \return ret 0 se for OK
+ * \return ret -1 se der algum erro
+ */
+
 static int receive_confirmation(packet_list *pkt_list, int sockfd)
 { 
+  int ret = 0;
   pkt_list->head = NULL; 
-  get_server_message(pkt_list, sockfd);
+  ret = get_server_message(pkt_list, sockfd);
   decode_message(pkt_list);
   trim_spaces(pkt_list->message);
   printf("Confirmacao recebida: %s",pkt_list->message);  
-  return 0;
+  return ret;
 }
 
 int main()
@@ -310,9 +435,8 @@ int main()
   if (decode_message(&pkt_list) < 0)
     goto error;
     
-  if (encode_message(pkt_list.head, pkt_list.message) < 0)
-    goto error;  
-  
+  encode_message(pkt_list.head, pkt_list.message);
+   
   if (send_message(pkt_list.head, sockfd) < 0)
     goto error;
   
